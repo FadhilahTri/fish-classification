@@ -29,10 +29,10 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # maks 8MB per upload
 
 # ====== LOAD MODEL & CLASS MAPPING SAAT STARTUP ======
 print("Memuat model MobileNetV2...")
-mobilenet_model = load_model(MODELS_DIR / "mobilenet_best.keras")
+mobilenet_model = load_model(MODELS_DIR / "mobilenet_best.h5", compile=False)
 
 print("Memuat model EfficientNetB0...")
-efficientnet_model = load_model(MODELS_DIR / "efficientnet_best.keras")
+efficientnet_model = load_model(MODELS_DIR / "efficientnet_best.h5", compile=False)
 
 with open(MODELS_DIR / "class_indices.json") as f:
     class_indices = json.load(f)
