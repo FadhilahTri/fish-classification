@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaClassify — Klasifikasi Jenis Ikan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #081821;
+    --bg-surface: #0F2A35;
+    --bg-surface-2: #143845;
+    --border-subtle: rgba(139, 199, 207, 0.14);
+    --accent-teal: #2DD4BF;
+    --accent-teal-dim: rgba(45, 212, 191, 0.14);
+    --accent-amber: #F5A623;
+    --text-primary: #E8F4F5;
+    --text-secondary: #8FB4BC;
+    --text-faint: #4E6B72;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-deep);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 191, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 90% 100%, rgba(245, 166, 35, 0.05), transparent);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ===== Ambient Decoration ===== */
+  .ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .ambient svg { position: absolute; opacity: 0.5; }
+  .fish-silhouette-1 {
+    left: -60px; top: 8%;
+    width: 220px; height: auto;
+    color: var(--accent-teal);
+    opacity: 0.07;
+    transform: rotate(-8deg);
+  }
+  .fish-silhouette-2 {
+    right: -80px; top: 55%;
+    width: 280px; height: auto;
+    color: var(--accent-amber);
+    opacity: 0.05;
+    transform: rotate(10deg) scaleX(-1);
+  }
+  .fish-silhouette-3 {
+    left: -40px; bottom: 6%;
+    width: 160px; height: auto;
+    color: var(--accent-teal);
+    opacity: 0.06;
+    transform: rotate(6deg);
+  }
+  .bubble {
+    position: absolute;
+    bottom: -40px;
+    border-radius: 50%;
+    background: rgba(45, 212, 191, 0.12);
+    border: 1px solid rgba(45, 212, 191, 0.18);
+    animation: rise-up linear infinite;
+  }
+  @keyframes rise-up {
+    0% { transform: translateY(0) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-110vh) translateX(20px); opacity: 0; }
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* ===== Header ===== */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-teal);
+    background: var(--accent-teal-dim);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    box-shadow: 0 0 8px var(--accent-teal);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+  h1 span { color: var(--accent-teal); }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 16px;
+    line-height: 1.6;
+    max-width: 520px;
+    margin-bottom: 40px;
+  }
+
+  /* ===== Model Toggle ===== */
+  .model-toggle {
+    display: inline-flex;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 32px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .model-toggle button {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .model-toggle button.active {
+    background: var(--accent-teal);
+    color: #052426;
+  }
+  .model-toggle button:not(.active):hover {
+    color: var(--text-primary);
+    background: var(--bg-surface-2);
+  }
+
+  /* ===== Upload Zone ===== */
+  .dropzone {
+    display: block;
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1.5px dashed var(--border-subtle);
+    border-radius: 20px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent-teal);
+    background: var(--bg-surface-2);
+  }
+  .dropzone input { display: none; }
+
+  .dropzone-icon {
+    width: 56px; height: 56px;
+    margin: 0 auto 20px;
+    color: var(--accent-teal);
+  }
+
+  .dropzone-title {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .dropzone-hint {
+    color: var(--text-faint);
+    font-size: 13px;
+  }
+  .dropzone-hint b { color: var(--text-secondary); }
+
+  .preview-wrap {
+    display: none;
+    margin-top: 24px;
+  }
+  .preview-wrap.show { display: block; }
+  .preview-wrap img {
+    max-width: 100%;
+    max-height: 280px;
+    border-radius: 14px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* ===== Analyze Button ===== */
+  .analyze-btn {
+    margin-top: 24px;
+    width: 100%;
+    background: var(--accent-teal);
+    color: #052426;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    border: none;
+    padding: 16px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: none;
+  }
+  .analyze-btn.show { display: block; }
+  .analyze-btn:hover { background: #4FE3D0; transform: translateY(-1px); }
+  .analyze-btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+  /* ===== Result Card ===== */
+  .result-card {
+    display: none;
+    margin-top: 32px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 20px;
+    padding: 32px;
+  }
+  .result-card.show { display: block; animation: rise 0.4s ease; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+  .result-species {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent-teal);
+    margin-bottom: 4px;
+  }
+  .result-confidence {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent-amber);
+    margin-bottom: 28px;
+  }
+
+  .breakdown-title {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .bar-name {
+    width: 150px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-deep);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-teal), #4FE3D0);
+    border-radius: 100px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0%;
+  }
+  .bar-value {
+    width: 52px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-faint);
+    flex-shrink: 0;
+  }
+
+  /* ===== Fish Info Card ===== */
+  .fish-info {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .fish-info-title {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+  .fish-info-latin {
+    font-style: italic;
+    color: var(--accent-amber);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .fish-info-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .fish-info-row .icon { flex-shrink: 0; color: var(--accent-teal); }
+  .fish-info-row .label { color: var(--text-faint); flex-shrink: 0; width: 68px; }
+  .fish-info-row .value { color: var(--text-secondary); }
+
+  /* ===== Compare Mode ===== */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 640px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+  .compare-col {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .compare-col-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin-bottom: 12px;
+  }
+  .agree-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+  .agree-badge.yes {
+    background: rgba(45, 212, 191, 0.14);
+    color: var(--accent-teal);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+  }
+  .agree-badge.no {
+    background: rgba(245, 166, 35, 0.12);
+    color: var(--accent-amber);
+    border: 1px solid rgba(245, 166, 35, 0.3);
+  }
+
+  .error-msg {
+    display: none;
+    margin-top: 20px;
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    color: #FCA5A5;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .error-msg.show { display: block; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-faint);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient" id="ambient">
+  <svg class="fish-silhouette-1" viewBox="0 0 100 50" fill="currentColor">
+    <path d="M5 25 Q20 5 55 15 Q75 5 95 10 Q85 20 85 25 Q85 30 95 40 Q75 45 55 35 Q20 45 5 25 Z M60 20 a3 3 0 1 1 0.1 0"/>
+  </svg>
+  <svg class="fish-silhouette-2" viewBox="0 0 100 50" fill="currentColor">
+    <path d="M5 25 Q20 5 55 15 Q75 5 95 10 Q85 20 85 25 Q85 30 95 40 Q75 45 55 35 Q20 45 5 25 Z M60 20 a3 3 0 1 1 0.1 0"/>
+  </svg>
+  <svg class="fish-silhouette-3" viewBox="0 0 100 50" fill="currentColor">
+    <path d="M5 25 Q20 5 55 15 Q75 5 95 10 Q85 20 85 25 Q85 30 95 40 Q75 45 55 35 Q20 45 5 25 Z M60 20 a3 3 0 1 1 0.1 0"/>
+  </svg>
+</div>
+
+<div class="wrap">
+
+  <div class="eyebrow">Computer Vision · Transfer Learning</div>
+  <h1>Kenali jenis ikan<br><span>hanya dari satu foto.</span></h1>
+  <p class="subtitle">
+    Unggah foto ikan, sistem akan mengklasifikasikannya ke dalam salah satu dari 9 spesies
+    menggunakan model MobileNetV2 atau EfficientNetB0.
+  </p>
+
+  <div class="model-toggle" id="modelToggle">
+    <button type="button" class="active" data-mode="efficientnet">EfficientNetB0</button>
+    <button type="button" data-mode="mobilenet">MobileNetV2</button>
+    <button type="button" data-mode="compare">⚡ Bandingkan Keduanya</button>
+  </div>
+
+  <form id="uploadForm">
+    <label class="dropzone" id="dropzone">
+      <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 16V4M12 4L7 9M12 4l5 5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="dropzone-title">Seret foto ke sini, atau klik untuk pilih</div>
+      <div class="dropzone-hint">Format <b>PNG / JPG / JPEG</b>, maksimal 8MB</div>
+      <input type="file" id="fileInput" accept=".png,.jpg,.jpeg">
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" src="" alt="Preview">
+      </div>
+    </label>
+
+    <button type="submit" class="analyze-btn" id="analyzeBtn">Analisis Gambar</button>
+  </form>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <div class="result-card" id="resultCard"></div>
+
+  <footer>
+    Capstone Project — Kecerdasan Buatan · Computer Vision · MobileNetV2 vs EfficientNetB0
+  </footer>
+</div>
+
+<script>
+  // Generate gelembung mengambang di sisi kiri & kanan layar (dekorasi ambient)
+  (function initBubbles() {
+    const ambient = document.getElementById('ambient');
+    const bubbleCount = 14;
+    for (let i = 0; i < bubbleCount; i++) {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const size = 6 + Math.random() * 18;
+      const onLeftSide = Math.random() > 0.5;
+      const horizontalPos = onLeftSide
+        ? Math.random() * 15
+        : 85 + Math.random() * 15;
+      bubble.style.width = `${size}px`;
+      bubble.style.height = `${size}px`;
+      bubble.style.left = `${horizontalPos}%`;
+      bubble.style.animationDuration = `${10 + Math.random() * 14}s`;
+      bubble.style.animationDelay = `${Math.random() * 12}s`;
+      ambient.appendChild(bubble);
+    }
+  })();
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const previewWrap = document.getElementById('previewWrap');
+  const previewImg = document.getElementById('previewImg');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const uploadForm = document.getElementById('uploadForm');
+  const resultCard = document.getElementById('resultCard');
+  const errorMsg = document.getElementById('errorMsg');
+  const modelToggle = document.getElementById('modelToggle');
+
+  let selectedMode = 'efficientnet';
+  let selectedFile = null;
+
+  modelToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    modelToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMode = btn.dataset.mode;
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  ['dragover', 'dragleave', 'drop'].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => e.preventDefault());
+  });
+  dropzone.addEventListener('dragover', () => dropzone.classList.add('dragover'));
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      previewImg.src = e.target.result;
+      previewWrap.classList.add('show');
+      analyzeBtn.classList.add('show');
+      resultCard.classList.remove('show');
+      errorMsg.classList.remove('show');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function fishInfoHTML(info) {
+    if (!info) return '';
+    return `
+      <div class="fish-info">
+        <div class="fish-info-title">Tentang Spesies Ini</div>
+        <div class="fish-info-latin">${info.nama_latin}</div>
+        <div class="fish-info-row">
+          <span class="icon">📍</span>
+          <span class="label">Habitat</span>
+          <span class="value">${info.habitat}</span>
+        </div>
+        <div class="fish-info-row">
+          <span class="icon">💡</span>
+          <span class="label">Fakta</span>
+          <span class="value">${info.fakta}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function breakdownHTML(topPredictions) {
+    return `
+      <div class="breakdown-title">Top 3 Kemungkinan</div>
+      <div class="breakdown-list">
+        ${topPredictions.map(pred => `
+          <div class="bar-row">
+            <div class="bar-name">${pred.class_name}</div>
+            <div class="bar-track"><div class="bar-fill fill-target" data-width="${pred.confidence}" style="width:0%"></div></div>
+            <div class="bar-value">${pred.confidence.toFixed(1)}%</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function animateBars(container) {
+    container.querySelectorAll('.fill-target').forEach(el => {
+      requestAnimationFrame(() => {
+        el.style.width = `${el.dataset.width}%`;
+      });
+    });
+  }
+
+  function renderSingleResult(data) {
+    resultCard.innerHTML = `
+      <div class="result-label">Hasil Klasifikasi · model ${data.model_used}</div>
+      <div class="result-species">${data.predicted_class}</div>
+      <div class="result-confidence">${data.confidence.toFixed(2)}% keyakinan</div>
+      ${breakdownHTML(data.top_predictions)}
+      ${fishInfoHTML(data.fish_info)}
+    `;
+    animateBars(resultCard);
+  }
+
+  function renderCompareResult(data) {
+    const mn = data.results.mobilenet;
+    const en = data.results.efficientnet;
+    resultCard.innerHTML = `
+      <div class="result-label">Perbandingan Dua Model</div>
+      <span class="agree-badge ${data.agree ? 'yes' : 'no'}">
+        ${data.agree ? '✓ Kedua model sepakat' : '⚠ Hasil berbeda antar model'}
+      </span>
+      <div class="compare-grid">
+        <div class="compare-col">
+          <div class="compare-col-title">EfficientNetB0</div>
+          <div class="result-species" style="font-size:22px">${en.predicted_class}</div>
+          <div class="result-confidence" style="margin-bottom:18px">${en.confidence.toFixed(2)}% keyakinan</div>
+          ${breakdownHTML(en.top_predictions)}
+          ${fishInfoHTML(en.fish_info)}
+        </div>
+        <div class="compare-col">
+          <div class="compare-col-title">MobileNetV2</div>
+          <div class="result-species" style="font-size:22px">${mn.predicted_class}</div>
+          <div class="result-confidence" style="margin-bottom:18px">${mn.confidence.toFixed(2)}% keyakinan</div>
+          ${breakdownHTML(mn.top_predictions)}
+          ${fishInfoHTML(mn.fish_info)}
+        </div>
+      </div>
+    `;
+    animateBars(resultCard);
+  }
+
+  uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedFile) return;
+
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = 'Menganalisis...';
+    errorMsg.classList.remove('show');
+    resultCard.classList.remove('show');
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    const isCompare = selectedMode === 'compare';
+    if (!isCompare) formData.append('model', selectedMode);
+
+    try {
+      const res = await fetch(isCompare ? '/predict_compare' : '/predict', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Terjadi kesalahan');
+
+      if (isCompare) {
+        renderCompareResult(data);
+      } else {
+        renderSingleResult(data);
+      }
+      resultCard.classList.add('show');
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.classList.add('show');
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analisis Gambar';
+    }
+  });
+</script>
+</body>
+</html>
